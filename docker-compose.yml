@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /data/postgres
+    networks:
+      - common-network
+    volumes:
+       - postgres:/data/postgres
+    restart: unless-stopped
+
+  railsapp:
+    container_name: railsapp
+    build: .
+    working_dir: /railsapp
+    image: dprovest/rails_recipe:latest
+    command: bundle exec rails s -p 3000 -b '0.0.0.0'
+    ports:
+      - 3000:3000
+    expose:
+      - 3000
+    depends_on:
+      - postgres
+    networks:
+      - common-network
+    volumes:
+      - ./:/railsapp
+    restart: on-failure
+
+networks:
+  common-network:
+    driver: bridge
+
+volumes:
+  railsapp:
+  postgres:
