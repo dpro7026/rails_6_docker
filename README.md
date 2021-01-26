@@ -131,6 +131,100 @@ docker-compose run railsapp rails db:create
 Visit *localhost:3000* and see the Hello World Rails app is running.</br>
 Note: To stop the app use `docker-compose down` and restart it with `docker-compose up`</br>
 
+### Add RSpec Testing Framework for TDD
+Add to the `Gemfile` into the group :development, :test do:
+```
+# Testing framework
+gem 'rspec-rails'
+```
+Re-build the container after updating `Gemfile`:
+```
+docker-compose build
+```
+Generate the RSpec configuration:
+```
+docker-compose run railsapp rails generate rspec:install
+```
+Ensure the correct version of RSpec is used:
+```
+docker-compose run railsapp bundle binstubs rspec-core
+```
+
+Create a new folder `spec/features` and 3 new files:
+`create_survey_spec.rb`, `delete_survey_spec.rb` and `edit_survey_spec.rb`.</br>
+Let's begin TDD by adding a test scenario to `create_survey_spec.rb`:
+```
+require "rails_helper"
+
+RSpec.feature "Creating Survey" do
+  scenario "A user creates a new survey" do
+    visit "/"
+
+    click_link "New Survey"
+    fill_in "Title", with: "What is your fave Pokemon?"
+    fill_in "Field 1", with: "Bulbasaur"
+    fill_in "Field 2", with: "Squirtle"
+    fill_in "Field 3", with: "Charmander"
+    click_button "Create Survey"
+
+    expect(page).to have_content("Survey has been created")
+    expect(page.current_path).to eq(surveys_path)
+  end
+end
+```
+To ensure test code coverage we add to the `Gemfile`:
+```
+group :test do
+  ...
+  # Code coverage
+  gem 'simplecov', require: false
+end
+```
+We don't want to upload the coverage reports to Git, so add to `.gitignore`:
+```
+#Ignore coverage files
+coverage/*
+```
+At the top of `spec/spec_helper.rb`:
+```
+require 'simplecov'
+SimpleCov.start 'rails' do
+  # These filters are excluded from results
+  add_filter '/bin/'
+  add_filter '/db/'
+  add_filter '/spec/'
+  add_filter '/test/'
+  add_filter do |source_file|
+    source_file.lines.count < 5
+  end
+end
+```
+Now when you run RSpec you will see the code coverage and generate a report in the coverage folder.</br>
+Let's use Brakeman for static analysis by adding to the `Gemfile`:
+```
+group :development do
+  ...
+  # Static security vulnerability analysis
+  gem 'brakeman'
+end
+```
+Now re-build:
+```
+docker-compose build
+```
+To run RSpec:
+```
+docker-compose run railsapp rspec
+```
+To run Brakeman and store it's report in our coverage folder:
+```
+docker-compose run railsapp brakeman -o coverage/brakeman_report
+```
+To view SimpleCov report:
+```
+open coverage/index.html
+```
+
 ## Authors
 
 **David Provest** - [LinkedIn](https://www.linkedin.com/in/davidjprovest/)
